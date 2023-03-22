@@ -1,5 +1,5 @@
 import { OpenAIMessage } from '../types';
-import * as tokenizer from '.';
+import { countTokensForMessages, truncateMessage } from './index';
 
 export interface ChatHistoryTrimmerOptions {
     maxTokens: number,
@@ -16,7 +16,7 @@ export class ChatHistoryTrimmer {
     }
 
     private countExcessTokens() {
-        return Math.max(0, tokenizer.countTokensForMessages(this.output) - this.options.maxTokens);
+        return Math.max(0, countTokensForMessages(this.output) - this.options.maxTokens);
     }
 
     public process() {
@@ -51,14 +51,14 @@ export class ChatHistoryTrimmer {
         const last = this.messages[this.messages.length - 1];
 
         this.output = [
-            tokenizer.truncateMessage(systemPrompt!, 100),
+            truncateMessage(systemPrompt!, 100),
         ];
 
         if (firstUserMessage === last) {
-            this.output.push(tokenizer.truncateMessage(firstUserMessage, this.options.maxTokens - 100));
+            this.output.push(truncateMessage(firstUserMessage, this.options.maxTokens - 100));
         } else {
-            this.output.push(tokenizer.truncateMessage(firstUserMessage!, 100));
-            this.output.push(tokenizer.truncateMessage(last, this.options.maxTokens - 200));
+            this.output.push(truncateMessage(firstUserMessage!, 100));
+            this.output.push(truncateMessage(last, this.options.maxTokens - 200));
         }
 
         excessTokens = this.countExcessTokens();
@@ -67,7 +67,7 @@ export class ChatHistoryTrimmer {
         }
 
         this.output = [
-            tokenizer.truncateMessage(last, this.options.maxTokens),
+            truncateMessage(last, this.options.maxTokens),
         ];
 
         return this.output;
@@ -100,7 +100,7 @@ export class ChatHistoryTrimmer {
 
         const output: OpenAIMessage[] = [...this.output];
 
-        for (let i = 0; i < this.output.length && tokenizer.countTokensForMessages(output) > this.options.maxTokens; i++) {
+        for (let i = 0; i < this.output.length && countTokensForMessages(output) > this.options.maxTokens; i++) {
             if (i === lastMessageIndex) {
                 continue;
             }
@@ -124,7 +124,7 @@ export class ChatHistoryTrimmer {
         const output: OpenAIMessage[] = [...this.output];
         const truncateLength = Math.floor(excessTokens /  this.output.length);
 
-        for (let i = 0; i < this.output.length && tokenizer.countTokensForMessages(output) > this.options.maxTokens; i++) {
+        for (let i = 0; i < this.output.length && countTokensForMessages(output) > this.options.maxTokens; i++) {
             if (i === lastMessageIndex) {
                 continue;
             }
@@ -134,7 +134,7 @@ export class ChatHistoryTrimmer {
             if (i === firstUserMessageIndex && this.options.preserveFirstUserMessage) {
                 continue;
             }
-            output[i] = tokenizer.truncateMessage(output[i], truncateLength);
+            output[i] = truncateMessage(output[i], truncateLength);
         }
         return output.filter(m => m.content.length > 0);
     }
